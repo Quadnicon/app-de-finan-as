@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RED.FINANCE - Controle de Finanças Pessoais</title>
+  
+  <!-- Fontes do Google (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Configuração de Cores e Estilos Customizados do Tailwind -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bgDark: '#09090b',
+            cardDark: '#18181b',
+            cardDarkLighter: '#09090b',
+            brandRed: {
+              DEFAULT: '#e11d48',
+              hover: '#be123c',
+              glow: 'rgba(225, 29, 72, 0.2)',
+              border: '#27272a',
+            },
+            brandGreen: {
+              DEFAULT: '#10b981',
+              hover: '#059669',
+              glow: 'rgba(16, 185, 129, 0.15)',
+              border: '#27272a',
+            },
+            textGray: '#a1a1aa',
+            gray: {
+              800: '#27272a',
+              700: '#3f3f46',
+              900: '#09090b',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Estilização para o scrollbar personalizado para o tema escuro */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #09090b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #e11d48;
+    }
+    
+    /* Animação suave para hover e transições de cards */
+    .transition-all-custom {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Efeito de brilho de marca para o cabeçalho e cards */
+    .glow-red {
+      box-shadow: 0 0 15px rgba(225, 29, 72, 0.2);
+    }
+    .glow-green {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+    }
+  </style>
+</head>
+<body class="bg-bgDark text-gray-100 font-sans min-h-full flex flex-col antialiased">
+
+  <!-- Sistema de Notificações Toast -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md w-full pointer-events-none"></div>
+
+  <!-- Cabeçalho Principal (Navbar) -->
+  <header class="border-b border-gray-800 bg-cardDark/80 backdrop-blur-md sticky top-0 z-40 transition-all-custom">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo e Nome -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brandRed to-red-800 flex items-center justify-center shadow-lg shadow-brandRed/30">
+            <i data-lucide="wallet" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <span class="text-xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-100 to-red-500">
+              RED<span class="text-brandRed">.FINANCE</span>
+            </span>
+            <p class="text-[10px] text-textGray tracking-widest uppercase">Gerenciamento Inteligente</p>
+          </div>
+        </div>
+
+        <!-- Ferramentas e Data -->
+        <div class="flex items-center gap-4">
+          <div class="hidden md:flex items-center gap-2 text-xs text-textGray bg-cardDarkLighter px-3 py-1.5 rounded-lg border border-gray-800">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-brandRed"></i>
+            <span id="header-date">--/--/----</span>
+          </div>
+          
+          <!-- Botão para carregar dados demo / resetar -->
+          <button onclick="confirmResetData()" class="flex items-center gap-2 text-xs font-semibold text-brandRed bg-brandRed/10 hover:bg-brandRed/20 px-3 py-2 rounded-lg border border-brandRed/30 transition-all-custom cursor-pointer">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Reiniciar Dados</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    
+    <!-- Painel de KPIs (Resumo Geral) -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      
+      <!-- Card: Saldo Geral -->
+      <div class="bg-cardDark p-6 rounded-xl border border-gray-800 hover:border-gray-700/80 transition-all-custom relative overflow-hidden group">
+        <!-- Detalhe decorativo vermelho no topo -->
+        <div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-600 via-brandRed to-red-800"></div>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-xs font-semibold tracking-wider uppercase text-textGray">Saldo Disponível</span>
+            <h2 id="kpi-balance" class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight text-white">R$ 0,00</h2>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-brandRed/10 border border-brandRed/30 flex items-center justify-center text-brandRed shadow-inner">
+            <i data-lucide="wallet" class="w-6 h-6"></i>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5 text-xs text-textGray">
+          <span id="kpi-balance-trend-icon" class="flex items-center">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5 text-brandGreen"></i>
+          </span>
+          <span id="kpi-balance-status">Seu saldo está positivo</span>
+        </div>
+      </div>
+
+      <!-- Card: Receitas -->
+      <div class="bg-cardDark p-6 rounded-xl border border-gray-800 hover:border-emerald-950/40 transition-all-custom relative overflow-hidden group">
+        <div class="absolute top-0 left-0 right-0 h-[3px] bg-brandGreen"></div>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-xs font-semibold tracking-wider uppercase text-textGray">Total Receitas</span>
+            <h2 id="kpi-income" class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight text-brandGreen">R$ 0,00</h2>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-brandGreen/10 border border-brandGreen/30 flex items-center justify-center text-brandGreen shadow-inner">
+            <i data-lucide="arrow-up-right" class="w-6 h-6"></i>
+          </div>
+        </div>
+        <p class="text-xs text-textGray flex items-center gap-1">
+          <i data-lucide="check-circle" class="w-3.5 h-3.5 text-brandGreen/80"></i>
+          Total de entradas registradas
+        </p>
+      </div>
+
+      <!-- Card: Despesas -->
+      <div class="bg-cardDark p-6 rounded-xl border border-gray-800 hover:border-red-950/40 transition-all-custom relative overflow-hidden group">
+        <div class="absolute top-0 left-0 right-0 h-[3px] bg-brandRed"></div>
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-xs font-semibold tracking-wider uppercase text-textGray">Total Despesas</span>
+            <h2 id="kpi-expense" class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight text-brandRed">R$ 0,00</h2>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-brandRed/10 border border-brandRed/30 flex items-center justify-center text-brandRed shadow-inner">
+            <i data-lucide="arrow-down-left" class="w-6 h-6"></i>
+          </div>
+        </div>
+        <div class="text-xs text-textGray flex items-center gap-1.5">
+          <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-brandRed/80"></i>
+          <span id="kpi-expense-ratio">Compromete --% da sua renda</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Seção de Ações e Gráficos -->
+    <section class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
+      
+      <!-- Formulário de Nova Transação (Esquerda) -->
+      <div class="bg-cardDark p-6 rounded-xl border border-gray-800 glow-red lg:col-span-2 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-6">
+            <div class="w-2 h-5 bg-brandRed rounded-full"></div>
+            <h3 class="text-lg font-bold tracking-tight text-white">Nova Transação</h3>
+          </div>
+
+          <form id="transaction-form" onsubmit="handleAddTransaction(event)" class="space-y-4">
+            
+            <!-- Tipo de Transação (Segmented Control) -->
+            <div>
+              <label class="block text-xs font-semibold text-textGray uppercase tracking-wider mb-2">Tipo</label>
+              <div class="grid grid-cols-2 gap-3">
+                <button type="button" onclick="setTransactionType('despesa')" id="btn-type-expense"
+                  class="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-brandRed/40 bg-brandRed/10 text-brandRed hover:bg-brandRed/20 font-medium text-sm transition-all-custom cursor-pointer focus:outline-none">
+                  <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+                  Despesa
+                </button>
+                <button type="button" onclick="setTransactionType('receita')" id="btn-type-income"
+                  class="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-800 bg-cardDarkLighter text-textGray hover:text-white hover:border-gray-700 font-medium text-sm transition-all-custom cursor-pointer focus:outline-none">
+                  <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                  Receita
+                </button>
+              </div>
+            </div>
+
+            <!-- Descrição -->
+            <div>
+              <label for="input-description" class="block text-xs font-semibold text-textGray uppercase tracking-wider mb-1.5">Descrição</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray">
+                  <i data-lucide="align-left" class="w-4 h-4"></i>
+                </div>
+                <input type="text" id="input-description" required placeholder="Ex: Aluguel, Supermercado..." 
+                  class="block w-full pl-10 pr-4 py-2.5 bg-bgDark border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+              </div>
+            </div>
+
+            <!-- Valor e Data -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <!-- Valor -->
+              <div>
+                <label for="input-amount" class="block text-xs font-semibold text-textGray uppercase tracking-wider mb-1.5">Valor (R$)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray font-semibold text-sm">
+                    R$
+                  </div>
+                  <input type="number" id="input-amount" step="0.01" min="0.01" required placeholder="0,00" 
+                    class="block w-full pl-10 pr-4 py-2.5 bg-bgDark border border-gray-700 rounded-md text-white placeholder-gray-500 text-sm focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+                </div>
+              </div>
+
+              <!-- Data -->
+              <div>
+                <label for="input-date" class="block text-xs font-semibold text-textGray uppercase tracking-wider mb-1.5">Data</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray">
+                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                  </div>
+                  <input type="date" id="input-date" required 
+                    class="block w-full pl-10 pr-4 py-2.5 bg-bgDark border border-gray-700 rounded-md text-white text-sm focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+                </div>
+              </div>
+            </div>
+
+            <!-- Categoria -->
+            <div>
+              <label for="input-category" class="block text-xs font-semibold text-textGray uppercase tracking-wider mb-1.5">Categoria</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray">
+                  <i data-lucide="tag" class="w-4 h-4"></i>
+                </div>
+                <select id="input-category" required 
+                  class="block w-full pl-10 pr-4 py-2.5 bg-bgDark border border-gray-700 rounded-md text-white text-sm appearance-none focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+                  <!-- Carregado dinamicamente -->
+                </select>
+                <!-- Seta customizada -->
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-textGray">
+                  <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botão Submit -->
+            <button type="submit" 
+              class="w-full mt-2 bg-brandRed text-white font-semibold py-2.5 px-4 rounded-md shadow-lg shadow-brandRed/25 hover:bg-brandRed/90 transition-all-custom transform active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2">
+              <i data-lucide="plus" class="w-5 h-5"></i>
+              Confirmar Transação
+            </button>
+
+          </form>
+        </div>
+
+        <!-- Dica Inteligente -->
+        <div class="mt-6 pt-4 border-t border-gray-800/60 hidden lg:block">
+          <div class="flex items-start gap-2.5 text-xs text-textGray">
+            <i data-lucide="info" class="w-4 h-4 text-brandRed shrink-0 mt-0.5"></i>
+            <span id="ai-insight-text">Sua saúde financeira agradece o planejamento diário de receitas e despesas.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Área de Gráficos e Insights (Direita) -->
+      <div class="bg-cardDark p-6 rounded-xl border border-gray-800 lg:col-span-3 flex flex-col justify-between">
+        <div>
+          <!-- Abas / Título dos Gráficos -->
+          <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-5 bg-brandRed rounded-full"></div>
+              <h3 class="text-lg font-bold tracking-tight text-white">Análise Gráfica</h3>
+            </div>
+            
+            <!-- Controles do gráfico -->
+            <div class="flex gap-1.5 bg-cardDarkLighter p-1 rounded-xl border border-gray-800">
+              <button onclick="setChartType('despesas')" id="btn-chart-despesas" 
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brandRed text-white shadow-sm transition-all-custom cursor-pointer">
+                Despesas por Categoria
+              </button>
+              <button onclick="setChartType('fluxo')" id="btn-chart-fluxo" 
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold text-textGray hover:text-white transition-all-custom cursor-pointer">
+                Fluxo Mensal
+              </button>
+            </div>
+          </div>
+
+          <!-- Container do Gráfico -->
+          <div class="relative w-full aspect-[4/3] max-h-[300px] flex items-center justify-center">
+            <!-- Canvas do ChartJS -->
+            <canvas id="finance-chart"></canvas>
+            
+            <!-- Estado Sem Dados para o Gráfico -->
+            <div id="chart-empty-state" class="absolute inset-0 bg-cardDark/95 flex flex-col items-center justify-center text-center p-6 hidden">
+              <div class="w-16 h-16 rounded-full bg-gray-800/60 flex items-center justify-center text-gray-500 mb-4 border border-gray-800">
+                <i data-lucide="pie-chart" class="w-8 h-8"></i>
+              </div>
+              <h4 class="text-sm font-semibold text-white">Gráfico Indisponível</h4>
+              <p class="text-xs text-textGray mt-1 max-w-xs">Adicione transações do tipo selecionado para visualizar o gráfico de gastos.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Indicador de Resumo por Categoria -->
+        <div class="mt-6 pt-4 border-t border-gray-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="text-textGray">
+            Categoria mais custosa: <strong id="highest-category-name" class="text-white">Nenhuma</strong>
+          </div>
+          <div class="font-bold text-brandRed" id="highest-category-value">
+            R$ 0,00
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Histórico de Transações -->
+    <section class="bg-cardDark p-6 rounded-xl border border-gray-800 relative">
+      
+      <!-- Cabeçalho e Barra de Filtros -->
+      <div class="flex flex-col gap-6 mb-6">
+        
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-5 bg-brandRed rounded-full"></div>
+            <h3 class="text-lg font-bold tracking-tight text-white">Histórico de Lançamentos</h3>
+          </div>
+          <!-- Contador -->
+          <span id="transaction-count" class="bg-cardDarkLighter border border-gray-800 text-textGray text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+            -- lançamentos
+          </span>
+        </div>
+
+        <!-- Inputs de Filtros -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-bgDark/40 p-4 rounded-xl border border-gray-800/80">
+          
+          <!-- Filtro: Busca por Descrição -->
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray">
+              <i data-lucide="search" class="w-4 h-4"></i>
+            </div>
+            <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Buscar por descrição..." 
+              class="block w-full pl-10 pr-4 py-2 bg-bgDark border border-gray-800 rounded-lg text-white placeholder-gray-500 text-xs focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+          </div>
+
+          <!-- Filtro: Tipo (Receita / Despesa / Todas) -->
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray">
+              <i data-lucide="filter" class="w-4 h-4"></i>
+            </div>
+            <select id="filter-type" onchange="applyFilters()" 
+              class="block w-full pl-10 pr-4 py-2 bg-bgDark border border-gray-800 rounded-lg text-white text-xs appearance-none focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+              <option value="todos">Todos os Tipos</option>
+              <option value="receita">Apenas Receitas</option>
+              <option value="despesa">Apenas Despesas</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-textGray">
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+
+          <!-- Filtro: Categoria -->
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray">
+              <i data-lucide="tag" class="w-4 h-4"></i>
+            </div>
+            <select id="filter-category" onchange="applyFilters()" 
+              class="block w-full pl-10 pr-4 py-2 bg-bgDark border border-gray-800 rounded-lg text-white text-xs appearance-none focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+              <!-- Dinâmico -->
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-textGray">
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+
+          <!-- Filtro: Ordenação -->
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-textGray">
+              <i data-lucide="arrow-up-down" class="w-4 h-4"></i>
+            </div>
+            <select id="filter-sort" onchange="applyFilters()" 
+              class="block w-full pl-10 pr-4 py-2 bg-bgDark border border-gray-800 rounded-lg text-white text-xs appearance-none focus:outline-none focus:border-brandRed focus:ring-1 focus:ring-brandRed/30 transition-all-custom">
+              <option value="date-desc">Mais recentes primeiro</option>
+              <option value="date-asc">Mais antigos primeiro</option>
+              <option value="value-desc">Maior valor</option>
+              <option value="value-asc">Menor valor</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-textGray">
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Tabela / Lista de Transações -->
+      <div class="overflow-x-auto">
+        <div class="inline-block min-w-full align-middle">
+          
+          <div class="overflow-hidden border border-gray-800/60 rounded-xl">
+            <table class="min-w-full divide-y divide-gray-800/80">
+              <thead class="bg-cardDarkLighter">
+                <tr>
+                  <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-textGray uppercase tracking-wider sm:pl-6">Transação</th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-textGray uppercase tracking-wider hidden sm:table-cell">Categoria</th>
+                  <th scope="col" class="px-3 py-3.5 text-left text-xs font-semibold text-textGray uppercase tracking-wider hidden md:table-cell">Data</th>
+                  <th scope="col" class="px-3 py-3.5 text-right text-xs font-semibold text-textGray uppercase tracking-wider">Valor</th>
+                  <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                    <span class="sr-only">Ações</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="transaction-list-body" class="divide-y divide-gray-800 bg-cardDark/50">
+                <!-- Preenchido dinamicamente por JS -->
+              </tbody>
+            </table>
+
+            <!-- Estado de Filtros Sem Resultados -->
+            <div id="list-empty-state" class="text-center py-12 px-4 hidden">
+              <div class="w-16 h-16 rounded-full bg-gray-800/40 flex items-center justify-center text-gray-500 mx-auto mb-4 border border-gray-800">
+                <i data-lucide="inbox" class="w-8 h-8"></i>
+              </div>
+              <h4 class="text-sm font-semibold text-white">Nenhum lançamento encontrado</h4>
+              <p class="text-xs text-textGray mt-1 max-w-sm mx-auto">Não há transações que correspondem aos critérios selecionados. Altere os filtros ou adicione uma transação.</p>
+              <button onclick="clearAllFilters()" class="mt-4 text-xs font-semibold text-brandRed hover:underline cursor-pointer">
+                Limpar Filtros de Busca
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Rodapé Principal -->
+  <footer class="border-t border-gray-800/60 bg-cardDark/50 py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-textGray">
+      <div class="flex items-center gap-2">
+        <span class="font-bold tracking-wider text-white">RED<span class="text-brandRed">.FINANCE</span></span>
+        <span>&copy; 2026. Controle de Finanças Pessoais de alta performance.</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span>Desenvolvido com carinho para o seu bolso.</span>
+        <span class="bg-gray-800 px-2 py-0.5 rounded text-[10px] text-gray-400">LocalStorage Ativo</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts do Sistema -->
+  <script>
+    // Definição de categorias e suas respectivas cores de exibição
+    const CATEGORIES = {
+      'Alimentação': { icon: 'pizza', color: '#ef4444', text: 'text-rose-400', bg: 'bg-rose-950/40 border-rose-900/60' },
+      'Moradia': { icon: 'home', color: '#f59e0b', text: 'text-amber-400', bg: 'bg-amber-950/40 border-amber-900/60' },
+      'Transporte': { icon: 'car', color: '#3b82f6', text: 'text-blue-400', bg: 'bg-blue-950/40 border-blue-900/60' },
+      'Contas & Serviços': { icon: 'lightbulb', color: '#6366f1', text: 'text-indigo-400', bg: 'bg-indigo-950/40 border-indigo-900/60' },
+      'Lazer & Entretenimento': { icon: 'clapperboard', color: '#ec4899', text: 'text-pink-400', bg: 'bg-pink-950/40 border-pink-900/60' },
+      'Compras': { icon: 'shopping-bag', color: '#06b6d4', text: 'text-cyan-400', bg: 'bg-cyan-950/40 border-cyan-900/60' },
+      'Salário & Rendimentos': { icon: 'landmark', color: '#10b981', text: 'text-emerald-400', bg: 'bg-emerald-950/40 border-emerald-900/60' },
+      'Investimentos': { icon: 'rocket', color: '#14b8a6', text: 'text-teal-400', bg: 'bg-teal-950/40 border-teal-900/60' },
+      'Outros': { icon: 'package', color: '#64748b', text: 'text-slate-400', bg: 'bg-slate-950/40 border-slate-900/60' }
+    };
+
+    // Estado Geral da Aplicação
+    let transactions = [];
+    let currentTransactionType = 'despesa'; // despesa | receita
+    let currentChartType = 'despesas'; // despesas | fluxo
+    let chartInstance = null; // Instância ativa do Chart.js
+
+    // Dados Demo para primeiro carregamento
+    const demoTransactions = [
+      { id: '1', description: 'Salário Mensal Corporativo', amount: 6500.00, type: 'receita', category: 'Salário & Rendimentos', date: '2026-06-01' },
+      { id: '2', description: 'Aluguel & Condomínio', amount: 1800.00, type: 'despesa', category: 'Moradia', date: '2026-06-05' },
+      { id: '3', description: 'Supermercado Semanal', amount: 450.00, type: 'despesa', category: 'Alimentação', date: '2026-06-12' },
+      { id: '4', description: 'Abastecimento Carro', amount: 220.00, type: 'despesa', category: 'Transporte', date: '2026-06-15' },
+      { id: '5', description: 'Freelance Web Design', amount: 1200.00, type: 'receita', category: 'Salário & Rendimentos', date: '2026-06-18' },
+      { id: '6', description: 'Cinema & Jantar Final de Semana', amount: 180.00, type: 'despesa', category: 'Lazer & Entretenimento', date: '2026-06-20' },
+      { id: '7', description: 'Assinatura Spotify & Netflix', amount: 75.00, type: 'despesa', category: 'Contas & Serviços', date: '2026-06-22' }
+    ];
+
+    // Frases motivacionais para o Insight Bar baseadas no saldo
+    const insights = {
+      positive: [
+        "Ótimo trabalho! Seu saldo está no azul. Que tal direcionar parte disso para Investimentos?",
+        "Parabéns! Suas receitas superaram suas despesas. Continue gerenciando com sabedoria.",
+        "Seu planejamento financeiro está dando resultados tangíveis. Mantenha o foco!"
+      ],
+      warning: [
+        "Atenção! Suas despesas estão quase emparelhando suas receitas. Considere rever gastos com Lazer.",
+        "Equilíbrio fino! Seu saldo está ligeiramente positivo. Tente evitar novas compras desnecessárias.",
+        "Cuidado com os pequenos gastos! Eles podem comprometer sua economia mensal no final das contas."
+      ],
+      negative: [
+        "Atenção Vermelha! Suas despesas superaram suas receitas este mês. Hora de cortar o supérfluo.",
+        "Alerta de orçamento estourado! Evite o cartão de crédito e tente regular suas contas básicas.",
+        "Seu saldo está negativo. Recomendamos categorizar as contas urgentes e negociar parcelamentos."
+      ]
+    };
+
+    // Inicialização ao carregar a página
+    document.addEventListener("DOMContentLoaded", () => {
+      // Exibe data do dia no cabeçalho
+      const today = new Date();
+      document.getElementById('header-date').innerText = today.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+
+      // Configura a data atual como valor padrão do formulário
+      document.getElementById('input-date').value = today.toISOString().split('T')[0];
+
+      // Inicializa os selects de Categoria
+      populateCategoryDropdowns();
+
+      // Carrega os dados salvos ou demo
+      loadTransactions();
+
+      // Renderiza a interface
+      renderApp();
+    });
+
+    // Popula dropdowns de categorias
+    function populateCategoryDropdowns() {
+      const selectForm = document.getElementById('input-category');
+      const selectFilter = document.getElementById('filter-category');
+      
+      // Limpa os elementos atuais
+      selectForm.innerHTML = '';
+      selectFilter.innerHTML = '<option value="todos">Todas as Categorias</option>';
+
+      Object.keys(CATEGORIES).forEach(cat => {
+        // Dropdown do Formulário
+        const optionForm = document.createElement('option');
+        optionForm.value = cat;
+        optionForm.text = cat;
+        selectForm.appendChild(optionForm);
+
+        // Dropdown do Filtro
+        const optionFilter = document.createElement('option');
+        optionFilter.value = cat;
+        optionFilter.text = cat;
+        selectFilter.appendChild(optionFilter);
+      });
+    }
+
+    // Carrega dados do LocalStorage
+    function loadTransactions() {
+      const stored = localStorage.getItem('red_finance_transactions');
+      if (stored) {
+        try {
+          transactions = JSON.parse(stored);
+        } catch (e) {
+          console.error("Erro ao ler transações do LocalStorage", e);
+          transactions = [...demoTransactions];
+        }
+      } else {
+        // Se for a primeira vez na vida, carrega os dados demo
+        transactions = [...demoTransactions];
+        saveTransactions();
+        showToast('Bem-vindo! Carregamos alguns dados demonstrativos para você começar.', 'info');
+      }
+    }
+
+    // Salva transações no LocalStorage
+    function saveTransactions() {
+      localStorage.setItem('red_finance_transactions', JSON.stringify(transactions));
+    }
+
+    // Alternar o tipo de transação no formulário (Receita <-> Despesa)
+    function setTransactionType(type) {
+      currentTransactionType = type;
+      
+      const btnExpense = document.getElementById('btn-type-expense');
+      const btnIncome = document.getElementById('btn-type-income');
+
+      if (type === 'despesa') {
+        btnExpense.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border border-brandRed/40 bg-brandRed/10 text-brandRed hover:bg-brandRed/20 font-medium text-sm transition-all-custom cursor-pointer focus:outline-none";
+        btnIncome.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-800 bg-cardDarkLighter text-textGray hover:text-white hover:border-gray-700 font-medium text-sm transition-all-custom cursor-pointer focus:outline-none";
+        
+        // Sugere categoria comum de despesa
+        document.getElementById('input-category').value = 'Alimentação';
+      } else {
+        btnExpense.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-800 bg-cardDarkLighter text-textGray hover:text-white hover:border-gray-700 font-medium text-sm transition-all-custom cursor-pointer focus:outline-none";
+        btnIncome.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border border-brandGreen/40 bg-brandGreen/10 text-brandGreen hover:bg-brandGreen/20 font-medium text-sm transition-all-custom cursor-pointer focus:outline-none";
+        
+        // Sugere categoria comum de receita
+        document.getElementById('input-category').value = 'Salário & Rendimentos';
+      }
+    }
+
+    // Processa a inserção de nova transação
+    function handleAddTransaction(event) {
+      event.preventDefault();
+
+      const descriptionInput = document.getElementById('input-description');
+      const amountInput = document.getElementById('input-amount');
+      const dateInput = document.getElementById('input-date');
+      const categoryInput = document.getElementById('input-category');
+
+      const description = descriptionInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+      const date = dateInput.value;
+      const category = categoryInput.value;
+
+      if (!description) {
+        showToast('Por favor, informe uma descrição válida.', 'warning');
+        return;
+      }
+      if (isNaN(amount) || amount <= 0) {
+        showToast('O valor deve ser maior do que zero.', 'warning');
+        return;
+      }
+      if (!date) {
+        showToast('Por favor, informe uma data válida.', 'warning');
+        return;
+      }
+
+      // Cria objeto da transação
+      const newTransaction = {
+        id: Date.now().toString(),
+        description,
+        amount,
+        type: currentTransactionType,
+        category,
+        date
+      };
+
+      // Adiciona no início da lista
+      transactions.unshift(newTransaction);
+      
+      // Salva e atualiza
+      saveTransactions();
+      renderApp();
+
+      // Limpa formulário (mantendo data padrão do dia de hoje)
+      descriptionInput.value = '';
+      amountInput.value = '';
+      document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+
+      // Notifica o usuário
+      showToast('Transação registrada com sucesso!', 'success');
+    }
+
+    // Excluir transação
+    function deleteTransaction(id) {
+      const index = transactions.findIndex(t => t.id === id);
+      if (index !== -1) {
+        const deleted = transactions[index];
+        transactions.splice(index, 1);
+        saveTransactions();
+        renderApp();
+        showToast(`"${deleted.description}" foi excluída.`, 'info');
+      }
+    }
+
+    // Confirmar reinicialização de dados demo
+    function confirmResetData() {
+      if (confirm("Tem certeza que deseja reinicializar todos os dados? Suas transações atuais serão substituídas pelas transações demonstrativas.")) {
+        transactions = [...demoTransactions];
+        saveTransactions();
+        renderApp();
+        showToast("Os dados foram reiniciados para o modelo de demonstração.", "info");
+      }
+    }
+
+    // Limpar todos os filtros do histórico
+    function clearAllFilters() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-type').value = 'todos';
+      document.getElementById('filter-category').value = 'todos';
+      document.getElementById('filter-sort').value = 'date-desc';
+      applyFilters();
+      showToast("Filtros redefinidos com sucesso.", "info");
+    }
+
+    // Atualiza os cálculos de KPIs
+    function updateKPIs() {
+      let incomeTotal = 0;
+      let expenseTotal = 0;
+
+      transactions.forEach(t => {
+        if (t.type === 'receita') {
+          incomeTotal += t.amount;
+        } else if (t.type === 'despesa') {
+          expenseTotal += t.amount;
+        }
+      });
+
+      const balanceTotal = incomeTotal - expenseTotal;
+
+      // Formata valores para BRL
+      const fmtBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+      // Atualiza DOM
+      const kpiBalance = document.getElementById('kpi-balance');
+      const kpiIncome = document.getElementById('kpi-income');
+      const kpiExpense = document.getElementById('kpi-expense');
+
+      kpiBalance.innerText = fmtBRL(balanceTotal);
+      kpiIncome.innerText = fmtBRL(incomeTotal);
+      kpiExpense.innerText = fmtBRL(expenseTotal);
+
+      // Estilo dinâmico para o Saldo (verde se positivo, vermelho se negativo)
+      const trendIconContainer = document.getElementById('kpi-balance-trend-icon');
+      const balanceStatusText = document.getElementById('kpi-balance-status');
+
+      if (balanceTotal > 0) {
+        kpiBalance.className = "text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight text-brandGreen";
+        trendIconContainer.innerHTML = '<i data-lucide="trending-up" class="w-3.5 h-3.5 text-brandGreen"></i>';
+        balanceStatusText.innerText = "Seu saldo está positivo";
+        balanceStatusText.className = "text-brandGreen text-xs font-medium";
+      } else if (balanceTotal < 0) {
+        kpiBalance.className = "text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight text-brandRed hover:scale-105 transition-all-custom";
+        trendIconContainer.innerHTML = '<i data-lucide="trending-down" class="w-3.5 h-3.5 text-brandRed"></i>';
+        balanceStatusText.innerText = "Seu saldo está negativo";
+        balanceStatusText.className = "text-brandRed text-xs font-medium";
+      } else {
+        kpiBalance.className = "text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight text-white";
+        trendIconContainer.innerHTML = '<i data-lucide="minus-circle" class="w-3.5 h-3.5 text-textGray"></i>';
+        balanceStatusText.innerText = "Seu saldo está zerado";
+        balanceStatusText.className = "text-textGray text-xs";
+      }
+
+      // Calcula proporção de Despesas comprometendo a receita
+      const expenseRatioSpan = document.getElementById('kpi-expense-ratio');
+      if (incomeTotal > 0) {
+        const ratio = ((expenseTotal / incomeTotal) * 100).toFixed(0);
+        expenseRatioSpan.innerText = `Compromete ${ratio}% da sua renda`;
+        if (ratio > 80) {
+          expenseRatioSpan.className = "text-brandRed font-medium";
+        } else if (ratio > 50) {
+          expenseRatioSpan.className = "text-amber-500 font-medium";
+        } else {
+          expenseRatioSpan.className = "text-brandGreen/90 font-medium";
+        }
+      } else {
+        expenseRatioSpan.innerText = expenseTotal > 0 ? "Sem renda para cobrir despesas" : "Ainda sem receitas este mês";
+        expenseRatioSpan.className = expenseTotal > 0 ? "text-brandRed font-medium" : "text-textGray";
+      }
+
+      // Gera Insight Aleatório Inteligente condizente com a situação
+      const insightText = document.getElementById('ai-insight-text');
+      let selectInsights = insights.positive;
+      if (balanceTotal < 0) {
+        selectInsights = insights.negative;
+      } else if (incomeTotal > 0 && (expenseTotal / incomeTotal) > 0.65) {
+        selectInsights = insights.warning;
+      }
+      // Escolhe um insight baseado no hash do valor do saldo para estabilizar na renderização
+      const idx = Math.abs(Math.floor(balanceTotal)) % selectInsights.length;
+      insightText.innerText = selectInsights[idx];
+
+      // Executa o Lucide para atualizar os ícones criados dinamicamente nos KPIs
+      lucide.createIcons();
+    }
+
+    // Filtros e Histórico de Lançamentos
+    function applyFilters() {
+      const searchQuery = document.getElementById('filter-search').value.toLowerCase().trim();
+      const filterType = document.getElementById('filter-type').value;
+      const filterCategory = document.getElementById('filter-category').value;
+      const filterSort = document.getElementById('filter-sort').value;
+
+      let filtered = [...transactions];
+
+      // Busca textual
+      if (searchQuery) {
+        filtered = filtered.filter(t => t.description.toLowerCase().includes(searchQuery));
+      }
+
+      // Tipo (receita/despesa)
+      if (filterType !== 'todos') {
+        filtered = filtered.filter(t => t.type === filterType);
+      }
+
+      // Categoria
+      if (filterCategory !== 'todos') {
+        filtered = filtered.filter(t => t.category === filterCategory);
+      }
+
+      // Ordenação
+      filtered.sort((a, b) => {
+        if (filterSort === 'date-desc') {
+          return new Date(b.date) - new Date(a.date);
+        } else if (filterSort === 'date-asc') {
+          return new Date(a.date) - new Date(b.date);
+        } else if (filterSort === 'value-desc') {
+          return b.amount - a.amount;
+        } else if (filterSort === 'value-asc') {
+          return a.amount - b.amount;
+        }
+        return 0;
+      });
+
+      renderTransactionList(filtered);
+    }
+
+    // Renderiza a lista filtrada de transações na tabela
+    function renderTransactionList(list) {
+      const listBody = document.getElementById('transaction-list-body');
+      const emptyState = document.getElementById('list-empty-state');
+      const countSpan = document.getElementById('transaction-count');
+
+      // Limpa lista atual
+      listBody.innerHTML = '';
+
+      // Atualiza contador
+      countSpan.innerText = `${list.length} ${list.length === 1 ? 'lançamento' : 'lançamentos'}`;
+
+      if (list.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      } else {
+        emptyState.classList.add('hidden');
+      }
+
+      list.forEach(t => {
+        const row = document.createElement('tr');
+        row.className = "hover:bg-cardDarkLighter/40 transition-colors group/row";
+
+        const catMeta = CATEGORIES[t.category] || CATEGORIES['Outros'];
+        const isIncome = t.type === 'receita';
+        
+        // Formata data de AAAA-MM-DD para DD/MM/AAAA
+        const formattedDate = t.date.split('-').reverse().join('/');
+        
+        // Formata valor monetário
+        const formattedValue = t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        row.innerHTML = `
+          <!-- Coluna Transação -->
+          <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
+            <div class="flex items-center gap-3">
+              <!-- Borda lateral esquerda para indicar tipo de transação -->
+              <div class="w-1 self-stretch rounded-full ${isIncome ? 'bg-brandGreen' : 'bg-brandRed'}"></div>
+              
+              <!-- Ícone da categoria de transação -->
+              <div class="w-9 h-9 rounded-lg ${catMeta.bg} flex items-center justify-center shrink-0 border">
+                <i data-lucide="${catMeta.icon}" class="w-4 h-4 ${catMeta.text}"></i>
+              </div>
+              <div>
+                <div class="font-semibold text-white truncate max-w-[150px] sm:max-w-xs md:max-w-md">${t.description}</div>
+                <!-- Data Visível em mobile no subtexto -->
+                <div class="text-[11px] text-textGray mt-0.5 sm:hidden flex items-center gap-1">
+                  <span>${formattedDate}</span>
+                  <span>•</span>
+                  <span class="${catMeta.text}">${t.category}</span>
+                </div>
+              </div>
+            </div>
+          </td>
+
+          <!-- Coluna Categoria -->
+          <td class="whitespace-nowrap px-3 py-4 text-xs hidden sm:table-cell">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${catMeta.bg} ${catMeta.text}">
+              ${t.category}
+            </span>
+          </td>
+
+          <!-- Coluna Data -->
+          <td class="whitespace-nowrap px-3 py-4 text-xs text-textGray hidden md:table-cell">
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-gray-600"></i>
+              <span>${formattedDate}</span>
+            </div>
+          </td>
+
+          <!-- Coluna Valor -->
+          <td class="whitespace-nowrap px-3 py-4 text-right text-sm font-bold">
+            <span class="${isIncome ? 'text-brandGreen' : 'text-brandRed'}">
+              ${isIncome ? '+' : '-'} ${formattedValue}
+            </span>
+          </td>
+
+          <!-- Coluna Ações -->
+          <td class="whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+            <button onclick="deleteTransaction('${t.id}')" title="Excluir Transação"
+              class="text-gray-500 hover:text-brandRed bg-transparent hover:bg-brandRed/10 p-2 rounded-lg border border-transparent hover:border-brandRed/20 transition-all-custom cursor-pointer opacity-80 sm:opacity-0 group-hover/row:opacity-100 focus:opacity-100">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </td>
+        `;
+
+        listBody.appendChild(row);
+      });
+
+      // Cria os ícones do Lucide que inserimos nas tabelas
+      lucide.createIcons();
+    }
+
+    // Configura e alterna abas de gráficos
+    function setChartType(type) {
+      currentChartType = type;
+
+      const btnDespesas = document.getElementById('btn-chart-despesas');
+      const btnFluxo = document.getElementById('btn-chart-fluxo');
+
+      if (type === 'despesas') {
+        btnDespesas.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-brandRed text-white shadow-sm transition-all-custom cursor-pointer";
+        btnFluxo.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-textGray hover:text-white transition-all-custom cursor-pointer";
+      } else {
+        btnDespesas.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-textGray hover:text-white transition-all-custom cursor-pointer";
+        btnFluxo.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-brandRed text-white shadow-sm transition-all-custom cursor-pointer";
+      }
+
+      renderCharts();
+    }
+
+    // Cria/Renderiza os gráficos usando Chart.js
+    function renderCharts() {
+      const emptyState = document.getElementById('chart-empty-state');
+      const canvas = document.getElementById('finance-chart');
+      
+      // Se já houver um gráfico instanciado, destrói para evitar gargalos e bugs visuais de render
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+
+      // Se não tiver transações registradas, exibe estado vazio no gráfico
+      if (transactions.length === 0) {
+        emptyState.classList.remove('hidden');
+        updateHighestCategory('Nenhuma', 0);
+        return;
+      }
+
+      if (currentChartType === 'despesas') {
+        // Agrupa as DESPESAS por categoria
+        const expensesByCategory = {};
+        let totalExpenseSum = 0;
+
+        // Inicializa todas as categorias com zero
+        Object.keys(CATEGORIES).forEach(c => {
+          expensesByCategory[c] = 0;
+        });
+
+        transactions.forEach(t => {
+          if (t.type === 'despesa') {
+            expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
+            totalExpenseSum += t.amount;
+          }
+        });
+
+        // Remove categorias que estão em zero para deixar o gráfico mais limpo
+        const chartLabels = [];
+        const chartData = [];
+        const chartColors = [];
+
+        let maxExpenseVal = 0;
+        let maxExpenseCat = 'Nenhuma';
+
+        Object.keys(expensesByCategory).forEach(cat => {
+          const val = expensesByCategory[cat];
+          if (val > 0) {
+            chartLabels.push(cat);
+            chartData.push(val);
+            chartColors.push(CATEGORIES[cat].color || '#64748b');
+
+            // Encontra a categoria mais custosa
+            if (val > maxExpenseVal) {
+              maxExpenseVal = val;
+              maxExpenseCat = cat;
+            }
+          }
+        });
+
+        updateHighestCategory(maxExpenseCat, maxExpenseVal);
+
+        // Se o total de despesas for zero, exibe o empty state do gráfico
+        if (totalExpenseSum === 0) {
+          emptyState.classList.remove('hidden');
+          return;
+        } else {
+          emptyState.classList.add('hidden');
+        }
+
+        // Configuração do Gráfico de Rosca (Doughnut)
+        chartInstance = new Chart(canvas, {
+          type: 'doughnut',
+          data: {
+            labels: chartLabels,
+            datasets: [{
+              data: chartData,
+              backgroundColor: chartColors,
+              borderWidth: 1.5,
+              borderColor: '#11131a',
+              hoverOffset: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  boxWidth: 10,
+                  padding: 12,
+                  color: '#94a3b8',
+                  font: {
+                    family: 'Inter',
+                    size: 11
+                  }
+                }
+              },
+              tooltip: {
+                backgroundColor: '#1a1d28',
+                borderColor: '#ef4444',
+                borderWidth: 1,
+                titleColor: '#fff',
+                titleFont: { family: 'Inter', weight: 'bold' },
+                bodyColor: '#94a3b8',
+                bodyFont: { family: 'Inter' },
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                  label: function(context) {
+                    const value = context.raw || 0;
+                    const percent = ((value / totalExpenseSum) * 100).toFixed(0);
+                    return ` R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${percent}%)`;
+                  }
+                }
+              }
+            },
+            cutout: '70%'
+          }
+        });
+
+      } else {
+        // Fluxo de Caixa: Compara Receitas vs Despesas
+        let totalInc = 0;
+        let totalExp = 0;
+
+        transactions.forEach(t => {
+          if (t.type === 'receita') {
+            totalInc += t.amount;
+          } else if (t.type === 'despesa') {
+            totalExp += t.amount;
+          }
+        });
+
+        if (totalInc === 0 && totalExp === 0) {
+          emptyState.classList.remove('hidden');
+          return;
+        } else {
+          emptyState.classList.add('hidden');
+        }
+
+        // Configuração do Gráfico de Barras Comparativo
+        chartInstance = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: ['Entradas', 'Saídas'],
+            datasets: [{
+              label: 'Movimentação',
+              data: [totalInc, totalExp],
+              backgroundColor: ['#10b981', '#e50914'],
+              borderRadius: 6,
+              borderWidth: 0,
+              maxBarThickness: 45
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                backgroundColor: '#1a1d28',
+                borderColor: '#e50914',
+                borderWidth: 1,
+                titleColor: '#fff',
+                titleFont: { family: 'Inter', weight: 'bold' },
+                bodyColor: '#94a3b8',
+                bodyFont: { family: 'Inter' },
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                  label: function(context) {
+                    const val = context.raw || 0;
+                    return ` R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  font: { family: 'Inter', size: 11 }
+                },
+                border: {
+                  color: '#334155'
+                }
+              },
+              y: {
+                grid: {
+                  color: '#1e293b'
+                },
+                ticks: {
+                  color: '#94a3b8',
+                  font: { family: 'Inter', size: 10 },
+                  callback: function(value) {
+                    return 'R$ ' + value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+                  }
+                },
+                border: {
+                  color: '#334155'
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // Atualiza a visualização da categoria mais custosa no card
+    function updateHighestCategory(name, val) {
+      const nameSpan = document.getElementById('highest-category-name');
+      const valSpan = document.getElementById('highest-category-value');
+
+      nameSpan.innerText = name;
+      valSpan.innerText = val > 0 ? val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+    }
+
+    // Centralizador de Renderização de todo o Aplicativo
+    function renderApp() {
+      updateKPIs();
+      applyFilters();
+      renderCharts();
+    }
+
+    // Gerador de Mensagens Toast Flutuantes na Interface
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      
+      const toast = document.createElement('div');
+      toast.className = `flex items-center gap-3 w-full max-w-sm p-4 rounded-xl border bg-cardDark shadow-2xl transition-all-custom duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
+      
+      let iconColor = 'text-brandGreen';
+      let iconName = 'check-circle';
+      let borderColor = 'border-brandGreen/30';
+      let shadowGlow = 'rgba(16, 185, 129, 0.1)';
+
+      if (type === 'warning') {
+        iconColor = 'text-amber-500';
+        iconName = 'alert-triangle';
+        borderColor = 'border-amber-500/30';
+        shadowGlow = 'rgba(245, 158, 11, 0.1)';
+      } else if (type === 'info') {
+        iconColor = 'text-blue-400';
+        iconName = 'info';
+        borderColor = 'border-blue-500/30';
+        shadowGlow = 'rgba(59, 130, 246, 0.1)';
+      } else if (type === 'error') {
+        iconColor = 'text-brandRed';
+        iconName = 'x-circle';
+        borderColor = 'border-brandRed/30';
+        shadowGlow = 'rgba(229, 9, 20, 0.1)';
+      }
+
+      toast.style.boxShadow = `0 10px 30px ${shadowGlow}`;
+      toast.classList.add(borderColor);
+
+      toast.innerHTML = `
+        <div class="${iconColor} shrink-0">
+          <i data-lucide="${iconName}" class="w-5 h-5"></i>
+        </div>
+        <div class="flex-grow text-xs font-semibold text-gray-200">
+          ${message}
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-gray-500 hover:text-white cursor-pointer select-none">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      `;
+
+      container.appendChild(toast);
+      
+      // Cria ícones para o Toast
+      lucide.createIcons();
+
+      // Força o reflow para rodar a animação de entrada
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 50);
+
+      // Auto-destrói após 4 segundos
+      setTimeout(() => {
+        toast.classList.add('translate-y-[-10px]', 'opacity-0');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 4000);
+    }
+  </script>
+</body>
+</html>
